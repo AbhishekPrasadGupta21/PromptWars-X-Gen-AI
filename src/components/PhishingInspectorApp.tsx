@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Shield, Moon, Sun, Sparkles, AlertTriangle, AlertCircle, CheckCircle2, ChevronRight, FileText, Globe, DollarSign, MessageSquare, Clipboard, Trash2, ShieldCheck, Printer, Upload } from 'lucide-react';
 
+const THREAT_REPORT_THRESHOLD = 50;
+
 interface ThreatVectors {
   financial: number;
   domain: number;
@@ -52,6 +54,7 @@ export default function PhishingInspectorApp() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showComplaintDraft, setShowComplaintDraft] = useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -88,6 +91,7 @@ export default function PhishingInspectorApp() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setShowComplaintDraft(false);
 
     try {
       let contentToScan = input;
@@ -595,18 +599,71 @@ export default function PhishingInspectorApp() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-4 text-sm text-cyan-400 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/50 print:hidden">
-                <span className="text-slate-400 mr-auto">Official Cybersecurity Fraud Reporting Portals:</span>
-                
-                <a 
-                  href="https://cybercrime.gov.in/" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="hover:text-cyan-300 transition-colors flex items-center gap-1"
-                >
-                  Indian Cyber Crime Portal ↗
-                </a>
-              </div>
+              {result.scamThreatIndex >= THREAT_REPORT_THRESHOLD && (
+                <div className="mt-8 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50 rounded-2xl p-6 print:hidden">
+                  <h3 className="text-lg font-bold text-red-700 dark:text-red-400 flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-5 h-5" />
+                    Report This Threat
+                  </h3>
+                  <p className="text-sm text-red-600 dark:text-red-300/80 mb-4">
+                    The calculated threat index ({result.scamThreatIndex}%) is above the reporting threshold. We strongly advise reporting this incident to the authorities.
+                  </p>
+                  
+                  {!showComplaintDraft ? (
+                    <button 
+                      onClick={() => setShowComplaintDraft(true)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors shadow-sm"
+                    >
+                      Generate Complaint Draft
+                    </button>
+                  ) : (
+                    <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                      <div className="bg-white dark:bg-slate-950 border border-red-200 dark:border-red-900/50 rounded-xl p-4 shadow-inner">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-xs font-bold text-red-800 dark:text-red-400 uppercase tracking-wider">Official Complaint Draft</span>
+                          <button 
+                            onClick={() => {
+                              const draft = `NATURE OF INCIDENT: Suspected Phishing / Fake Employment Offer\nSUSPECTED ENTITY/DOMAIN: ${result.domainInfo.domain}\n\nEVIDENCE SUMMARY & RED FLAGS DETECTED:\nThe following suspicious patterns were identified in the communication:\n${result.redFlags.length > 0 ? result.redFlags.map(f => `- ${f.title}: "${f.excerpt}"`).join('\n') : 'No specific textual red flags extracted.'}\n\nDynamic Scam Threat Index: ${result.scamThreatIndex}%\n\nFINANCIAL LOSS: [TO BE FILLED BY USER]\nDATE OF INCIDENT: [TO BE FILLED BY USER]`;
+                              navigator.clipboard.writeText(draft);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                          >
+                            <Clipboard className="w-3.5 h-3.5" /> Copy Draft to Clipboard
+                          </button>
+                        </div>
+                        <div className="font-mono text-xs text-slate-800 dark:text-slate-300 whitespace-pre-wrap select-all">
+                          {`NATURE OF INCIDENT: Suspected Phishing / Fake Employment Offer
+SUSPECTED ENTITY/DOMAIN: ${result.domainInfo.domain}
+
+EVIDENCE SUMMARY & RED FLAGS DETECTED:
+The following suspicious patterns were identified in the communication:
+${result.redFlags.length > 0 ? result.redFlags.map(f => `- ${f.title}: "${f.excerpt}"`).join('\n') : 'No specific textual red flags extracted.'}
+
+Dynamic Scam Threat Index: ${result.scamThreatIndex}%
+
+FINANCIAL LOSS: [TO BE FILLED BY USER]
+DATE OF INCIDENT: [TO BE FILLED BY USER]`}
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-red-100/50 dark:bg-red-900/30 p-4 rounded-xl border border-red-200 dark:border-red-800/50">
+                        <p className="text-sm font-medium text-red-800 dark:text-red-300 max-w-lg">
+                          Copy this draft, then visit the official portal below to file your report — you'll need to verify your identity there before submitting.
+                        </p>
+                        
+                        <a 
+                          href="https://cybercrime.gov.in/" 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="shrink-0 inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-colors shadow-md"
+                        >
+                          <Globe className="w-4 h-4" /> Go to Portal ↗
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
           </div>
